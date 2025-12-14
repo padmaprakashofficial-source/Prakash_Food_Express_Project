@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Prakash Food Express</title>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<style>
+body{margin:0;font-family:Arial;background:#111;color:#fff}
+input,button{width:100%;padding:10px;margin:6px 0;border-radius:6px;border:none}
+button{background:#ff9800;font-weight:bold}
+.card{background:#222;padding:15px;margin:10px;border-radius:10px}
+</style>
+</head>
+<body>
+<div class="card">
+<h2>Customer Login</h2>
+<input id="cname" placeholder="Name" />
+<input id="cmobile" placeholder="Mobile" />
+<input id="cemail" placeholder="Email" />
+<input id="caddress" placeholder="Address" />
+<button onclick="loginCustomer()">Continue</button>
+</div>
+<div id="menu"></div>
+<button onclick="placeOrder()">Place Order</button>
+<script>
+const firebaseConfig={apiKey:"AIzaSyBBO9OO1h3NPQ9e4SCZVMhHf780_m5HWdc",projectId:"prakash-food-express"};
+firebase.initializeApp(firebaseConfig);
+const db=firebase.firestore();
+let cart=[];let customer={};
+async function loginCustomer(){
+ customer={name:cname.value,mobile:cmobile.value,email:cemail.value,address:caddress.value};
+ await db.collection('customers').doc(customer.mobile).set(customer,{merge:true});
+ loadMenu();
+}
+async function loadMenu(){
+ const snap=await db.collection('menuItems').get();
+ menu.innerHTML='';
+ snap.forEach(d=>{
+  const m=d.data();
+  menu.innerHTML+=`<div class='card'>${m.name} - ₹${m.price}<button onclick='add("${m.name}",${m.price})'>Add</button></div>`;
+ });
+}
+function add(n,p){cart.push({n,p});alert('Added')}
+async function placeOrder(){
+ const total=cart.reduce((s,i)=>s+i.p,20);
+ const order={customer,cart,total,created:new Date()};
+ await db.collection('orders').add(order);
+ await fetch('/api/sendMail',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(order)});
+ alert('Order placed successfully');
+ cart=[];
+}
+</script>
+</body>
+</html>

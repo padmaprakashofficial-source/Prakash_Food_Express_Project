@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html><head><title>Admin</title></head>
+<body style="background:#111;color:#fff;font-family:Arial">
+<h2>Admin Login</h2>
+<input id="m" placeholder="Mobile" />
+<input id="p" placeholder="Password" />
+<button onclick="login()">Login</button>
+<div id="panel" style="display:none">
+<h3>Create Shop Owner</h3>
+<input id="om" placeholder="Owner Mobile" />
+<input id="op" placeholder="Password" />
+<select id="shop">
+<option>Boy Biryani</option>
+<option>Mansoor Shop</option>
+<option>Friends Food</option>
+</select>
+<button onclick="createOwner()">Create</button>
+</div>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script>
+firebase.initializeApp({apiKey:"AIzaSyBBO9OO1h3NPQ9e4SCZVMhHf780_m5HWdc",projectId:"prakash-food-express"});
+const db=firebase.firestore();
+function login(){if(m.value==='9087120704'&&p.value==='Prakash1003'){panel.style.display='block';}}
+async function createOwner(){
+ await db.collection('shopOwners').doc(om.value).set({
+  mobile:om.value,password:op.value,shop:shop.value,active:true
+ });
+ alert('Owner Created');
+}
+</script>
+</body></html>

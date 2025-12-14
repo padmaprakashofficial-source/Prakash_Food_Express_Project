@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html><head><title>Owner</title></head>
+<body style="background:#111;color:#fff;font-family:Arial">
+<h2>Shop Owner Login</h2>
+<input id="m" placeholder="Mobile" />
+<input id="p" placeholder="Password" />
+<button onclick="login()">Login</button>
+<div id="add" style="display:none">
+<input id="name" placeholder="Food Name" />
+<input id="price" placeholder="Price" />
+<button onclick="addItem()">Add Item</button>
+</div>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script>
+firebase.initializeApp({apiKey:"AIzaSyBBO9OO1h3NPQ9e4SCZVMhHf780_m5HWdc",projectId:"prakash-food-express"});
+const db=firebase.firestore();let shop='';
+async function login(){
+ const d=await db.collection('shopOwners').doc(m.value).get();
+ if(d.exists && d.data().password===p.value){
+  shop=d.data().shop;
+  add.style.display='block';
+ }
+}
+async function addItem(){
+ await db.collection('menuItems').add({
+  shop:shop,name:name.value,price:Number(price.value)
+ });
+ alert('Added');
+}
+</script>
+</body></html>
