@@ -1,55 +1,108 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Prakash Food Express</title>
+<style>
+body{margin:0;font-family:Arial;color:#fff;background:#111;}
+input,button,select{width:100%;padding:10px;margin:6px 0;border-radius:6px;border:none;}
+button{background:#ff9800;font-weight:bold;cursor:pointer;}
+.card{background:#222;padding:15px;margin:10px;border-radius:10px;}
+.hidden{display:none;}
+</style>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
-<style>
-body{margin:0;font-family:Arial;background:#111;color:#fff}
-input,button{width:100%;padding:10px;margin:6px 0;border-radius:6px;border:none}
-button{background:#ff9800;font-weight:bold}
-.card{background:#222;padding:15px;margin:10px;border-radius:10px}
-</style>
 </head>
 <body>
-<div class="card">
-<h2>Customer Login</h2>
-<input id="cname" placeholder="Name" />
-<input id="cmobile" placeholder="Mobile" />
-<input id="cemail" placeholder="Email" />
-<input id="caddress" placeholder="Address" />
-<button onclick="loginCustomer()">Continue</button>
+
+<div id="loginDiv" class="card">
+  <h2>Login / Register</h2>
+  <input id="mobile" placeholder="Mobile Number">
+  <input id="password" type="password" placeholder="Password">
+  <button onclick="loginUser()">Login</button>
+  <h3>Or Register as Customer</h3>
+  <input id="cname" placeholder="Name" />
+  <input id="cemail" placeholder="Email" />
+  <input id="caddress" placeholder="Address" />
+  <button onclick="registerCustomer()">Register</button>
 </div>
-<div id="menu"></div>
-<button onclick="placeOrder()">Place Order</button>
+
+<div id="menuSection" class="hidden card">
+  <h2>Menu</h2>
+  <div id="menu"></div>
+  <button onclick="placeOrder()">Place Order</button>
+</div>
+
 <script>
-const firebaseConfig={apiKey:"AIzaSyBBO9OO1h3NPQ9e4SCZVMhHf780_m5HWdc",projectId:"prakash-food-express"};
+const firebaseConfig = {
+  apiKey: "AIzaSyBBO9OO1h3NPQ9e4SCZVMhHf780_m5HWdc",
+  authDomain: "prakash-food-express.firebaseapp.com",
+  projectId: "prakash-food-express"
+};
 firebase.initializeApp(firebaseConfig);
-const db=firebase.firestore();
-let cart=[];let customer={};
-async function loginCustomer(){
- customer={name:cname.value,mobile:cmobile.value,email:cemail.value,address:caddress.value};
- await db.collection('customers').doc(customer.mobile).set(customer,{merge:true});
- loadMenu();
+const db = firebase.firestore();
+
+let currentUser=null, cart=[];
+
+// CUSTOMER REGISTER
+async function registerCustomer(){
+  const name=cname.value.trim();
+  const mobile=mobile.value.trim();
+  const password=password.value.trim();
+  const email=cemail.value.trim();
+  const address=caddress.value.trim();
+  if(!name||!mobile||!password||!email||!address){alert("Fill all fields");return;}
+  const docRef=db.collection('users').doc(mobile);
+  if((await docRef.get()).exists){alert("Mobile already registered");return;}
+  await docRef.set({name,mobile,password,email,address,role:"customer"});
+  alert("Registered! Please login");
 }
+
+// LOGIN USER
+async function loginUser(){
+  const m=mobile.value.trim(), p=password.value.trim();
+  const docSnap=await db.collection('users').doc(m).get();
+  if(!docSnap.exists || docSnap.data().password!==p){alert("Invalid login");return;}
+  currentUser=docSnap.data();
+
+  if(currentUser.role==="admin"){
+    // redirect to admin.html
+    window.location.href="admin.html";
+  } else if(currentUser.role==="shopowner"){
+    if(!currentUser.active){alert("Access denied by admin"); return;}
+    // redirect to owner.html
+    window.location.href="owner.html";
+  } else if(currentUser.role==="customer"){
+    document.getElementById('loginDiv').classList.add('hidden');
+    document.getElementById('menuSection').classList.remove('hidden');
+    loadMenu();
+  }
+}
+
+// LOAD MENU FOR CUSTOMER
 async function loadMenu(){
- const snap=await db.collection('menuItems').get();
- menu.innerHTML='';
- snap.forEach(d=>{
-  const m=d.data();
-  menu.innerHTML+=`<div class='card'>${m.name} - ₹${m.price}<button onclick='add("${m.name}",${m.price})'>Add</button></div>`;
- });
+  const snap=await db.collection('menuItems').get();
+  const menuDiv=document.getElementById('menu'); menuDiv.innerHTML="";
+  snap.forEach(d=>{
+    const item=d.data();
+    menuDiv.innerHTML+=`<div class="card"><strong>${item.name}</strong> - ₹${item.price}<button onclick='addToCart("${item.name}",${item.price})'>Add</button></div>`;
+  });
 }
-function add(n,p){cart.push({n,p});alert('Added')}
+
+// CART
+function addToCart(name,price){cart.push({name,price}); alert("Added to cart");}
+
+// PLACE ORDER
 async function placeOrder(){
- const total=cart.reduce((s,i)=>s+i.p,20);
- const order={customer,cart,total,created:new Date()};
- await db.collection('orders').add(order);
- await fetch('/api/sendMail',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(order)});
- alert('Order placed successfully');
- cart=[];
+  if(cart.length===0){alert("Cart empty");return;}
+  const total=cart.reduce((sum,i)=>sum+i.price,20);
+  const order={customer:currentUser,cart,total,created:new Date()};
+  await db.collection('orders').add(order);
+  await fetch('/api/sendMail',{
+    method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(order)
+  });
+  alert("Order placed successfully"); cart=[];
 }
 </script>
 </body>
