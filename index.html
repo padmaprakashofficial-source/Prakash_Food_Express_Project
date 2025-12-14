@@ -35,6 +35,7 @@ button{background:#ff9800;font-weight:bold;cursor:pointer;}
 </div>
 
 <script>
+/* FIREBASE CONFIG */
 const firebaseConfig = {
   apiKey: "AIzaSyBBO9OO1h3NPQ9e4SCZVMhHf780_m5HWdc",
   authDomain: "prakash-food-express.firebaseapp.com",
@@ -45,11 +46,11 @@ const db = firebase.firestore();
 
 let currentUser=null, cart=[];
 
-// CUSTOMER REGISTER
+/* CUSTOMER REGISTER */
 async function registerCustomer(){
   const name=cname.value.trim();
-  const mobile=mobile.value.trim();
-  const password=password.value.trim();
+  const mobile=document.getElementById('mobile').value.trim();
+  const password=document.getElementById('password').value.trim();
   const email=cemail.value.trim();
   const address=caddress.value.trim();
   if(!name||!mobile||!password||!email||!address){alert("Fill all fields");return;}
@@ -59,28 +60,36 @@ async function registerCustomer(){
   alert("Registered! Please login");
 }
 
-// LOGIN USER
+/* LOGIN USER */
 async function loginUser(){
-  const m=mobile.value.trim(), p=password.value.trim();
-  const docSnap=await db.collection('users').doc(m).get();
-  if(!docSnap.exists || docSnap.data().password!==p){alert("Invalid login");return;}
-  currentUser=docSnap.data();
+  const m=document.getElementById('mobile').value.trim();
+  const p=document.getElementById('password').value.trim();
 
-  if(currentUser.role==="admin"){
-    // redirect to admin.html
-    window.location.href="admin.html";
-  } else if(currentUser.role==="shopowner"){
-    if(!currentUser.active){alert("Access denied by admin"); return;}
-    // redirect to owner.html
-    window.location.href="owner.html";
-  } else if(currentUser.role==="customer"){
+  const docSnap=await db.collection('users').doc(m).get();
+  const userData=docSnap.exists ? docSnap.data() : null;
+
+  if(userData && userData.role==="customer"){
+    currentUser=userData;
     document.getElementById('loginDiv').classList.add('hidden');
     document.getElementById('menuSection').classList.remove('hidden');
     loadMenu();
+  } else if(userData && userData.role==="shopowner"){
+    if(!userData.active){alert("Access denied by admin"); return;}
+    window.location.href="owner.html";
+  } else {
+    // Admin login via API (Vercel env variables)
+    const res=await fetch("/api/adminLogin",{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({mobile:m,password:p})
+    });
+    const data=await res.json();
+    if(data.ok){ window.location.href="admin.html"; }
+    else{ alert("Invalid credentials"); }
   }
 }
 
-// LOAD MENU FOR CUSTOMER
+/* LOAD MENU FOR CUSTOMER */
 async function loadMenu(){
   const snap=await db.collection('menuItems').get();
   const menuDiv=document.getElementById('menu'); menuDiv.innerHTML="";
@@ -90,10 +99,10 @@ async function loadMenu(){
   });
 }
 
-// CART
+/* CART */
 function addToCart(name,price){cart.push({name,price}); alert("Added to cart");}
 
-// PLACE ORDER
+/* PLACE ORDER */
 async function placeOrder(){
   if(cart.length===0){alert("Cart empty");return;}
   const total=cart.reduce((sum,i)=>sum+i.price,20);
