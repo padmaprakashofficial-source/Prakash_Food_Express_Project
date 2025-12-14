@@ -15,22 +15,24 @@ button{background:#ff9800;font-weight:bold;cursor:pointer;}
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 </head>
 <body>
+
 <div id="loginDiv" class="card">
   <h2>Login / Register</h2>
   <input id="mobile" placeholder="Mobile Number">
   <input id="password" type="password" placeholder="Password">
-  <button onclick="loginUser()">Login</button>
+  <button type="button" onclick="loginUser()">Login</button>
+
   <h3>Or Register as Customer</h3>
   <input id="cname" placeholder="Name" />
   <input id="cemail" placeholder="Email" />
   <input id="caddress" placeholder="Address" />
-  <button onclick="registerCustomer()">Register</button>
+  <button type="button" onclick="registerCustomer()">Register</button>
 </div>
 
 <div id="menuSection" class="hidden card">
   <h2>Menu</h2>
   <div id="menu"></div>
-  <button onclick="placeOrder()">Place Order</button>
+  <button type="button" onclick="placeOrder()">Place Order</button>
 </div>
 
 <script>
@@ -45,70 +47,82 @@ const db = firebase.firestore();
 
 let currentUser=null, cart=[];
 
+/* ADMIN CREDENTIALS (FOR TESTING ONLY) */
+const ADMIN_MOBILE = "9087120704";
+const ADMIN_PASSWORD = "Prakash10032001";
+
 /* CUSTOMER REGISTER */
 async function registerCustomer(){
-  const name=cname.value.trim();
-  const mobile=document.getElementById('mobile').value.trim();
-  const password=document.getElementById('password').value.trim();
-  const email=cemail.value.trim();
-  const address=caddress.value.trim();
-  if(!name||!mobile||!password||!email||!address){alert("Fill all fields");return;}
-  const docRef=db.collection('users').doc(mobile);
-  if((await docRef.get()).exists){alert("Mobile already registered");return;}
+  const name = document.getElementById('cname').value.trim();
+  const mobile = document.getElementById('mobile').value.trim();
+  const password = document.getElementById('password').value.trim();
+  const email = document.getElementById('cemail').value.trim();
+  const address = document.getElementById('caddress').value.trim();
+
+  if(!name || !mobile || !password || !email || !address){ alert("Fill all fields"); return; }
+
+  const docRef = db.collection('users').doc(mobile);
+  if((await docRef.get()).exists){ alert("Mobile already registered"); return; }
+
   await docRef.set({name,mobile,password,email,address,role:"customer"});
   alert("Registered! Please login");
 }
 
+/* LOGIN USER */
 async function loginUser(){
   const m = document.getElementById('mobile').value.trim();
   const p = document.getElementById('password').value.trim();
 
+  // CHECK ADMIN FIRST
+  if(m === ADMIN_MOBILE && p === ADMIN_PASSWORD){
+    window.location.href = "admin.html"; // redirect admin
+    return;
+  }
+
+  // CHECK FIRESTORE USERS
   const docSnap = await db.collection('users').doc(m).get();
   const userData = docSnap.exists ? docSnap.data() : null;
 
-  if(userData && userData.role === "customer"){
+  if(userData && userData.role==="shopowner"){
+    if(!userData.active){ alert("Access denied by admin"); return; }
+    window.location.href="owner.html";
+  } else if(userData && userData.role==="customer"){
     currentUser = userData;
     document.getElementById('loginDiv').classList.add('hidden');
     document.getElementById('menuSection').classList.remove('hidden');
     loadMenu();
-  } else if(userData && userData.role === "shopowner"){
-    if(!userData.active){ alert("Access denied by admin"); return; }
-    window.location.href="owner.html";
   } else {
-    // ADMIN validation directly in HTML (unsafe)
-    const ADMIN_MOBILE = "1234567890"; // hardcoded
-    const ADMIN_PASSWORD = "Prakash1003"; // hardcoded
-
-    if(m === ADMIN_MOBILE && p === ADMIN_PASSWORD){
-      window.location.href = "admin.html";
-    } else {
-      alert("Invalid credentials");
-    }
+    alert("Invalid credentials");
   }
 }
 
 /* LOAD MENU FOR CUSTOMER */
 async function loadMenu(){
-  const snap=await db.collection('menuItems').get();
-  const menuDiv=document.getElementById('menu'); menuDiv.innerHTML="";
+  const snap = await db.collection('menuItems').get();
+  const menuDiv = document.getElementById('menu'); menuDiv.innerHTML="";
   snap.forEach(d=>{
-    const item=d.data();
-    menuDiv.innerHTML+=`<div class="card"><strong>${item.name}</strong> - ₹${item.price}<button onclick='addToCart("${item.name}",${item.price})'>Add</button></div>`;
+    const item = d.data();
+    menuDiv.innerHTML+=`<div class="card"><strong>${item.name}</strong> - ₹${item.price} <button type="button" onclick='addToCart("${item.name}",${item.price})'>Add</button></div>`;
   });
 }
 
 /* CART */
-function addToCart(name,price){cart.push({name,price}); alert("Added to cart");}
+function addToCart(name,price){ cart.push({name,price}); alert("Added to cart"); }
 
 /* PLACE ORDER */
 async function placeOrder(){
-  if(cart.length===0){alert("Cart empty");return;}
-  const total=cart.reduce((sum,i)=>sum+i.price,20);
-  const order={customer:currentUser,cart,total,created:new Date()};
+  if(cart.length===0){ alert("Cart empty"); return; }
+  const total = cart.reduce((sum,i)=>sum+i.price,20); // delivery charge
+  const order = {customer:currentUser, cart, total, created:new Date()};
   await db.collection('orders').add(order);
+
+  // OPTIONAL: send email via serverless / SMTP API
   await fetch('/api/sendMail',{
-    method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(order)
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify(order)
   });
+
   alert("Order placed successfully"); cart=[];
 }
 </script>
