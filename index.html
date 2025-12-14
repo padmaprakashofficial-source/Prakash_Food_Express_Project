@@ -60,34 +60,36 @@ async function registerCustomer(){
   alert("Registered! Please login");
 }
 
-/* LOGIN USER */
+<script>
 async function loginUser(){
-  const m=document.getElementById('mobile').value.trim();
-  const p=document.getElementById('password').value.trim();
+  const m = document.getElementById('mobile').value.trim();
+  const p = document.getElementById('password').value.trim();
 
-  const docSnap=await db.collection('users').doc(m).get();
-  const userData=docSnap.exists ? docSnap.data() : null;
+  const docSnap = await db.collection('users').doc(m).get();
+  const userData = docSnap.exists ? docSnap.data() : null;
 
-  if(userData && userData.role==="customer"){
-    currentUser=userData;
+  if(userData && userData.role === "customer"){
+    currentUser = userData;
     document.getElementById('loginDiv').classList.add('hidden');
     document.getElementById('menuSection').classList.remove('hidden');
     loadMenu();
-  } else if(userData && userData.role==="shopowner"){
-    if(!userData.active){alert("Access denied by admin"); return;}
+  } else if(userData && userData.role === "shopowner"){
+    if(!userData.active){ alert("Access denied by admin"); return; }
     window.location.href="owner.html";
   } else {
-    // Admin login via API (Vercel env variables)
-    const res=await fetch("/api/adminLogin",{
-      method:"POST",
-      headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({mobile:m,password:p})
-    });
-    const data=await res.json();
-    if(data.ok){ window.location.href="admin.html"; }
-    else{ alert("Invalid credentials"); }
+    // ADMIN validation directly in HTML (unsafe)
+    const ADMIN_MOBILE = "1234567890"; // hardcoded
+    const ADMIN_PASSWORD = "Prakash1003"; // hardcoded
+
+    if(m === ADMIN_MOBILE && p === ADMIN_PASSWORD){
+      window.location.href = "admin.html";
+    } else {
+      alert("Invalid credentials");
+    }
   }
 }
+</script>
+
 
 /* LOAD MENU FOR CUSTOMER */
 async function loadMenu(){
